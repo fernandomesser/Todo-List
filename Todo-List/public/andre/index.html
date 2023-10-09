@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <title>Andre - To-Do App</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
+    </head>
+
+    <body class="p-6">
+        <div class="p-6 max-w-xl mx-auto backgr bg-slate-100">
+
+            <div class="flex flex-row justify-center bg-slate-100 p-2 ">
+                <a href="/">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                        stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                    </svg>
+                </a>
+                <h1 class="text-center text-cyan-800 text-base font-bold">To-Do App</h1>
+            </div>
+
+            <div class="p-1 m-2 justify-center bg-slate-100 ">
+                <form id="taskForm">
+                    <input id="nameInput" type="text" name="name" placeholder="Enter your Task Name here" autofocus
+                        class="w-32 md:w-96" />
+                    <button id="addButton">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                            stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </button>
+                    <button id="clearButton" type="button">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                            stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                        </svg>
+                    </button>
+                </form>
+            </div>
+
+            <div class="flex flex-col">
+                <div class="overflow-x-auto sm:-mx-6 lg:-mx-8">
+                    <div class="inline-block min-w-full py-2 sm:px-4 lg:px-8">
+                        <div>
+                            <table class="min-w-full text-left text-sm font-light">
+                                <thead
+                                    class="border-b bg-white font-medium dark:border-neutral-500 dark:bg-neutral-600">
+                                    <tr>
+                                        <th scope="col">#</th>
+                                        <th scope="col">Task</th>
+                                        <th scope="col">Done</th>
+                                        <th scope="col"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="taskTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <script>
+            console.log("Hello World");
+            async function fetchAllTasks() {
+                const response = await fetch("/api/andre/tasks");
+                const tasks = await response.json();
+                console.log("Number of tasks found: ", tasks.length);
+                console.log("tasks: ", tasks);
+                return tasks;
+            }
+
+            function renderRow(tableBodyElement, task) {
+                console.log("Task: ", task);
+                const row = document.createElement("tr");
+                tableBodyElement.append(row);
+                // Create the ID column
+                const idCol = document.createElement("td");
+                idCol.append(task.id);
+                row.append(idCol);
+                // Create the Name column
+                const nameCol = document.createElement("td");
+                nameCol.append(task.name);
+                row.append(nameCol);
+                // Create the Done column
+                const doneCol = document.createElement("td");
+                const checkbox = document.createElement("input");
+                checkbox.setAttribute("type", "checkbox");
+                if (task.done) {
+                    checkbox.setAttribute("checked", "");
+                }
+                checkbox.addEventListener('change', function () {
+                    // When the checkbox changes, update the backend
+                    fetch(`/api/andre/tasks/${task.id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ done: this.checked })
+                    }).then(function (response) {
+                        if (!response.ok) {
+                            console.error('Error updating task');
+                            // If the request failed, revert the checkbox
+                            this.checked = !this.checked;
+                        }
+                    }.bind(this)).catch(function (error) {
+                        console.error(error);
+                        // If the request failed, revert the checkbox
+                        this.checked = !this.checked;
+                    }.bind(this));
+                });
+
+                doneCol.append(checkbox);
+                row.append(doneCol);
+                // Create the actions
+                const actionCol = document.createElement("td");
+                const removeButton = document.createElement("button");
+                removeButton.append("remove");
+                actionCol.append(removeButton);
+                removeButton.addEventListener("click", function () {
+                    const choice = window.confirm(`Are you sure you want to delete:\n${task.name}`);
+                    if (!choice) {
+                        return;
+                    }
+                    // Go ahead and delete it.
+                    console.log("Delete task id: ", task.id);
+                    deleteTask(task.id, row);
+
+                });
+                row.append(actionCol);
+            }
+
+            async function deleteTask(taskId, row) {
+                try {
+                    const response = await fetch(`/api/andre/tasks/${taskId}`, {
+                        method: 'DELETE'
+                    });
+                    if (response.status === 204) {
+                        console.log("Task deleted successfully");
+                        row.remove();
+                    } else {
+                        console.log("Failed to delete task");
+                    }
+                } catch (error) {
+                    console.error("An error occurred:", error);
+                }
+            }
+
+            async function renderTable() {
+                const tasks = await fetchAllTasks();
+                const tableBody = document.getElementById("taskTableBody");
+                for (let i = 0; i < tasks.length; i++) {
+                    const task = tasks[i];
+                    // render the row
+                    renderRow(tableBody, task);
+                }
+            }
+
+            //Add task
+            const clearButton = document.getElementById("clearButton");
+            clearButton.addEventListener("click", clearAllTasks);
+
+            const addButton = document.getElementById("addButton");
+            addButton.addEventListener("click", async function (event) {
+                event.preventDefault();
+                const nameInput = document.getElementById("nameInput");
+                const name = nameInput.value.trim();
+                if (name === "") {
+                    return;
+                }
+                const newTask = { name: name, done: false };
+
+                try {
+                    const response = await fetch("/api/andre/tasks", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(newTask),
+                    });
+
+                    if (response.status === 201) {
+                        console.log("Task created successfully");
+                        nameInput.value = "";
+                        const createdTask = await response.json();
+                        const tableBody = document.getElementById("taskTableBody");
+                        renderRow(tableBody, createdTask);
+                    } else {
+                        console.log("Failed to create task");
+                    }
+                } catch (error) {
+                    console.error("An error occurred:", error);
+                }
+            });
+
+            async function clearAllTasks() {
+                const confirmed = window.confirm("Are you sure you want to delete all tasks?");
+                if (!confirmed) {
+                    return;
+                }
+                await fetch("/api/andre/tasks", {
+                    method: "DELETE"
+                });
+                const tableBody = document.getElementById("taskTableBody");
+                tableBody.innerHTML = "";
+            }
+            // Call the function
+            renderTable()
+        </script>
+    </body>
+
+</html>

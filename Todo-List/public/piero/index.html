@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>To Do App</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
+  </head>
+
+  <body class="bg-blue-200 flex justify-center items-center h-screen">
+
+    <div class="bg-white rounded-lg shadow-lg p-10">
+      <a class="text-gray-400" href="/">Back</a>
+      <h1 class="block text-sm font-medium leading-6 text-gray-900">To-Do App</h1>
+
+      <form id="taskForm" @submit.prevent="createTask" class="flex justify-center">
+        <label for="nameInput"></label>
+        <input id="nameInput" x-model="taskName" type="text" name="taskName "
+          class="bg bg-slate-50 border-none shadow-xl rounded-full mr-4" placeholder="Enter task" />
+        <button id="addButton" type="button" class="rounded-full bg-purple-600 text-white px-4 py-2">Add</button>
+        <button x-show="hasDoneTasks" id="clearButton" type="button" @click="clearDoneTasks"
+          class="rounded-full bg-orange-400 text-white px-4 py-2 ">Clear
+          All</button>
+      </form>
+
+      <template x-for="task in tasks" :key="task.id">
+        <li>
+          <div>
+            <input type="checkbox" @change="updateTaskStatus(task)" :checked="task.done" />
+            <span x-text="task.name">Name of the task</span>
+            <button class="hidden group-hover:block" @click="deleteTask(task)">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="purple"
+                class="w-4 h-4">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+              </svg>
+            </button>
+          </div>
+        </li>
+      </template>
+
+      <table class="mt-4 mx-auto text-center" id="taskTable">
+        <thead class="border-b font-medium dark:border-neutral-500">
+          <tr>
+            <th scope="col" class="px-6 py-4">Id</th>
+            <th scope="col" class="px-6 py-4">Name</th>
+            <th scope="col" class="px-6 py-4">Done</th>
+          </tr>
+        </thead>
+        <tbody id="taskTableBody"></tbody>
+      </table>
+
+    </div>
+
+    <script>
+      console.log("Hello World");
+      async function fetchAllTasks() {
+        const response = await fetch("/api/piero/tasks");
+        const tasks = await response.json();
+        console.log("Number of tasks found: ", tasks.length);
+        console.log("tasks: ", tasks);
+        return tasks;
+      }
+
+      function renderRow(tableBodyElement, task) {
+        console.log("Task: ", task);
+        const row = document.createElement("tr");
+        tableBodyElement.append(row);
+        // Create the ID column
+        const idCol = document.createElement("td");
+        idCol.append(task.id);
+        row.append(idCol);
+        // Create the Name column
+        const nameCol = document.createElement("td");
+        nameCol.append(task.name);
+        row.append(nameCol);
+        // Create the Done column
+        const doneCol = document.createElement("td");
+        const checkbox = document.createElement("input");
+        checkbox.setAttribute("type", "checkbox");
+        if (task.done) {
+          checkbox.setAttribute("checked", "");
+        }
+        checkbox.addEventListener('change', function () {
+          // When the checkbox changes, update the backend
+          fetch(`/api/piero/tasks/${task.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ done: this.checked })
+          }).then(function (response) {
+            if (!response.ok) {
+              console.error('Error updating task');
+              // If the request failed, revert the checkbox
+              this.checked = !this.checked;
+            }
+          }.bind(this)).catch(function (error) {
+            console.error(error);
+            // If the request failed, revert the checkbox
+            this.checked = !this.checked;
+          }.bind(this));
+        });
+
+        doneCol.append(checkbox);
+        row.append(doneCol);
+        // Create the actions
+        const actionCol = document.createElement("td");
+        const removeButton = document.createElement("button");
+        removeButton.append("remove");
+        actionCol.append(removeButton);
+
+        removeButton.addEventListener("click", async function () {
+          const choice = window.confirm(`Are you sure you want to delete this task:\n${task.name}?`);
+
+          //Choice is null if the user clicks cancel
+          if (!choice) {
+            return;
+          }
+          // Go ahead and delete it.
+          console.log("Delete task id: ", task.id);
+          deleteTask(task.id, row);
+
+        });
+        row.append(actionCol);
+      }
+
+      async function deleteTask(taskId, row) {
+        try {
+          const response = await fetch(`/api/piero/tasks/${taskId}`, {
+            method: 'DELETE'
+          });
+          if (response.status === 204) {
+            console.log("Task deleted successfully");
+            row.remove();
+          } else {
+            console.log("Failed to delete task");
+          }
+        } catch (error) {
+          console.error("An error occurred:", error);
+        }
+      }
+
+      async function renderTable() {
+        const tasks = await fetchAllTasks();
+        const tableBody = document.getElementById("taskTableBody");
+        for (let i = 0; i < tasks.length; i++) {
+          const task = tasks[i];
+          // render the row
+          renderRow(tableBody, task);
+        }
+      }
+
+      //Add task
+      const clearButton = document.getElementById("clearButton");
+      clearButton.addEventListener("click", clearAllTasks);
+
+      const addButton = document.getElementById("addButton");
+      addButton.addEventListener("click", async function (event) {
+        event.preventDefault();
+        const nameInput = document.getElementById("nameInput");
+        const name = nameInput.value.trim();
+        if (name === "") {
+          return;
+        }
+        const newTask = { name: name, done: false };
+
+        try {
+          const response = await fetch("/api/piero/tasks", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(newTask),
+          });
+
+          if (response.status === 201) {
+            console.log("Task created successfully");
+            nameInput.value = "";
+            const createdTask = await response.json();
+            const tableBody = document.getElementById("taskTableBody");
+            renderRow(tableBody, createdTask);
+          } else {
+            console.log("Failed to create task");
+          }
+        } catch (error) {
+          console.error("An error occurred:", error);
+        }
+      });
+
+      async function clearAllTasks() {
+        const confirmed = window.confirm("Are you sure you want to delete all tasks?");
+        if (!confirmed) {
+          return;
+        }
+        await fetch("/api/piero/tasks", {
+          method: "DELETE"
+        });
+        const tableBody = document.getElementById("taskTableBody");
+        tableBody.innerHTML = "";
+      }
+      // Call the function
+      renderTable()
+    </script>
+    <script src="//unpkg.com/alpinejs"></script>
+
+  </body>
+
+</html>

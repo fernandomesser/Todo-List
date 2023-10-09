@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            clifford: '#da373d',
+          }
+        }
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+    }
+  </style>
+
+  <head>
+    <title>Doyoung Yoon - To-Do App</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  </head>
+
+  <body>
+
+    <a href="/">Back</a>
+    <div class="w-full max-w-2xl mx-auto bg-white shadow-lg rounded-sm border border-gray-200">
+      <header class="px-5 py-4 border-b border-gray-100">
+        <h2 class="font-semibold text-gray-800">To-do App</h2>
+      </header>
+      <div class="p-3">
+        <form id="taskForm">
+          <input class="shadow appearance-none border rounded w-2/3 py-2 px-3 mr-4 text-grey-darker"
+            placeholder="Add Todo" id="nameInput" type="text" />
+          <button class="flex-no-shrink p-2 border-2 rounded text-teal border-teal hover:text-white hover:bg-green-400"
+            id="addButton"">Add</button>
+                <button class=" flex-no-shrink p-2 border-2 rounded text-teal border-teal hover:text-white
+            hover:bg-sky-700" id="clearButton" type="button">Clear</button>
+        </form>
+        <div class="overflow-x-auto">
+          <table class="table-auto w-full" id="taskTable">
+            <thead class="text-xs font-semibold uppercase text-gray-400 bg-gray-50">
+              <tr>
+                <th class="p-2 whitespace-nowrap">
+                  <div class="font-semibold text-left">ID</div>
+                </th>
+                <th class="p-2 whitespace-nowrap">
+                  <div class="font-semibold text-left">Name</div>
+                </th>
+                <th class="p-2 whitespace-nowrap">
+                  <div class="font-semibold text-center">Done</div>
+                </th>
+                <th class="p-2 whitespace-nowrap">
+                  <div class="font-semibold text-left">Actions</div>
+                </th>
+              </tr>
+            </thead>
+            <tbody class="text-sm divide-y divide-gray-100" id="taskTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    </div>
+  </body>
+
+  <script>
+    setTimeout(function () {
+      document.querySelector('input[type="checkbox"]').setAttribute('checked', true);
+    }, 100);
+
+    async function fetchAllTasks() {
+      const response = await fetch("/api/doyoung/tasks");
+      const data = await response.json();
+      return data;
+    }
+
+    function renderRow(tableBodyElement, task) {
+      const row = document.createElement("tr");
+      tableBodyElement.append(row);
+      row.classList.add("p-2", "whitespace-nowrap");
+
+      //Create the ID column
+      const idCol = document.createElement("td");
+      idCol.append(task.id);
+      row.append(idCol);
+      idCol.classList.add("p-2", "whitespace-nowrap");
+
+      //Create the name column
+      const nameCol = document.createElement("td");
+      nameCol.append(task.name);
+      row.append(nameCol);
+      nameCol.classList.add("p-2", "whitespace-nowrap");
+
+      //Create the done column
+      const doneCol = document.createElement("td");
+      const checkbox = document.createElement("input");
+      checkbox.setAttribute("type", "checkbox");
+      doneCol.classList.add("p-2", "whitespace-nowrap", "text-center");
+
+      if (task.done) {
+        checkbox.setAttribute("checked", "");
+      }
+      a
+      doneCol.append(checkbox);
+      row.append(doneCol);
+
+      //Create actions
+      const actionsCol = document.createElement("td");
+      const removeButton = document.createElement("button");
+      removeButton.append("Remove");
+      actionsCol.append(removeButton);
+      actionsCol.classList.add("flex", "w-1/3", "p-2", "ml-2", "justify-center", "rounded-lg", "text-red-500", "border-red-500", "hover:text-white", "hover:bg-red-500");
+
+      removeButton.addEventListener("click", async function () {
+        const confirm = window.confirm(`Are you sure you want to delete this task:\n${task.name}?`);
+
+        //Choice is null if the user clicks cancel
+        if (!confirm) {
+          return;
+        }
+        //Choice is true if the user clicks ok
+        await fetch(`/api/doyoung/tasks/${task.id}`, {
+          method: "DELETE"
+        });
+        row.remove();
+      });
+
+      row.append(actionsCol);
+
+    }
+
+    renderTable();
+
+    async function renderTable() {
+      const tasks = await fetchAllTasks();
+      const tableBody = document.getElementById("taskTableBody");
+      for (let i = 0; i < tasks.length; i++) {
+        const task = tasks[i];
+
+        //render the row
+        renderRow(tableBody, task);
+      }
+
+    }
+
+    //Add event listeners
+    const addButton = document.getElementById("addButton");
+    addButton.addEventListener("click", postTask);
+
+    const clearButton = document.getElementById("clearButton");
+    clearButton.addEventListener("click", clearAllTasks);
+
+    //Clear all tasks
+    async function clearAllTasks() {
+      const confirmed = window.confirm("Are you sure you want to delete all tasks?");
+      if (!confirmed) {
+        return;
+      }
+      await fetch("/api/doyoung/tasks", {
+        method: "DELETE"
+      });
+      const tableBody = document.getElementById("taskTableBody");
+      tableBody.innerHTML = "";
+    }
+
+    //Post a task
+    async function postTask() {
+      const nameInput = document.getElementById("nameInput");
+      const name = nameInput.value;
+
+      const response = await fetch("/api/doyoung/tasks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          name: name
+        })
+      });
+
+      const task = await response.json();
+      const tableBody = document.getElementById("taskTableBody");
+      renderRow(tableBody, task);
+      nameInput.value = "";
+
+    }
+
+    // Update a task
+    async function updateTask(task) {
+      try {
+        const response = await fetch(`/api/doyoung/tasks/${task.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(task)
+        });
+
+        if (response.ok) {
+          const updatedTask = await response.json();
+          console.log(updatedTask);
+          const row = document.getElementById(`row-${updatedTask.id}`);
+          if (row) {
+            if (updatedTask.done) {
+              row.classList.add("text-sm", "divide-y", "divide-gray-100");
+            } else {
+              row.classList.remove("text-sm", "divide-y", "divide-gray-100");
+            }
+          }
+        } else {
+          console.error("Error updating task:", response.statusText);
+        }
+      } catch (error) {
+        console.error("Error updating task:", error);
+      }
+    }
+
+
+
+    // Add event listener to the table
+    const taskTable = document.getElementById("taskTable");
+    taskTable.addEventListener("change", async function (event) {
+      const checkbox = event.target;
+      if (checkbox.type === 'checkbox') {
+        const row = checkbox.parentElement.parentElement;
+        const id = row.children[0].innerText;
+        const name = row.children[1].innerText;
+        const task = {
+          id: parseInt(id), // Convert the ID to a number
+          name: name,
+          done: checkbox.checked
+        };
+        await updateTask(task);
+
+        // Apply appropriate CSS classes based on task's "done" status
+        row.classList.toggle("bg-gray-200", checkbox.checked);
+        row.children[1].classList.toggle("line-through", checkbox.checked);
+      }
+    });
+
+
+
+
+  </script>
+
+</html>

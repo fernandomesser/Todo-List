@@ -1,0 +1,27 @@
+networks:
+  backend:
+    driver: ${NETWORKS_DRIVER:-bridge}
+
+volumes:
+  mysql:
+    driver: ${VOLUMES_DRIVER:-local}
+
+services:
+    mysql:
+      build:
+        context: ./mysql
+        args:
+          - MYSQL_VERSION=${MYSQL_VERSION:-latest}
+      environment:
+        - MYSQL_DATABASE=${MYSQL_DATABASE:-todo}
+        - MYSQL_USER=${MYSQL_USER:-todo}
+        - MYSQL_PASSWORD=${MYSQL_PASSWORD:-secret}
+        - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-secret}
+        - TZ=${WORKSPACE_TIMEZONE:-UTC}
+      volumes:
+        - ${DATA_PATH_HOST:-./data}/mysql:/var/lib/mysql
+        - ${MYSQL_ENTRYPOINT_INITDB:-./mysql/docker-entrypoint-initdb.d}:/docker-entrypoint-initdb.d
+      ports:
+        - "${MYSQL_PORT:-3306}:3306"
+      networks:
+        - backend

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <title>Moroni Ibarra - To Do App</title>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+        <style>
+            .line-through {
+                text-decoration: line-through;
+            }
+
+            .task-container {
+                background-color: #000;
+                color: #fff;
+                padding: 2rem;
+                border-radius: 1rem;
+                max-width: 640px;
+                width: 90%;
+                text-align: center;
+                text-;
+            }
+        </style>
+    </head>
+
+    <body class="bg-sky-300 min-h-screen flex flex-col items-center justify-center">
+        <h1
+            class="text-slate-900 font-extrabold text-4xl sm:text-5xl lg:text-6xl tracking-tight text-center dark:text-white mt-8">
+            My To-Do List</h1>
+
+        <div class="mt-12 sm:mt-16 flex justify-center items-center space-x-4 text-sm">
+            <form id="taskForm" onsubmit="createTask(event)" class="flex flex-col sm:flex-row space-y-2 sm:space-y-0">
+                <label for="nameInput" class="sr-only">Name</label>
+                <input
+                    class="bg-teal-100 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 focus:ring-offset-slate-50"
+                    id="nameInput" type="text" name="nameInput" placeholder="Write down your task" />
+
+                <button
+                    class="bg-green-500 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 focus:ring-offset-slate-50 text-white font-semibold h-12 px-6 rounded-lg w-full sm:w-auto dark:bg-sky-500 dark:hover:bg-sky-400"
+                    id="addButton" type="submit">Add</button>
+
+                <button
+                    class="bg-red-500 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2 focus:ring-offset-slate-50 text-white font-semibold h-12 px-6 rounded-lg w-full sm:w-auto dark:bg-sky-500 dark:hover:bg-sky-400"
+                    id="clearButton" type="button" onclick="clearAllTasks()">Clear</button>
+            </form>
+        </div>
+
+        <div class="mt-8 task-container">
+            <table class="w-full border-collapse">
+                <thead>
+                    <tr>
+                        <th class="text-1xl font-bold underline">Name</th>
+                        <th class="text-1xl font-bold underline">Done</th>
+                        <th class="text-1xl font-bold underline">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="taskTableBody"></tbody>
+            </table>
+        </div>
+
+        <script>
+            // region show existing tasks
+            function renderRow(tableBodyElement, task) {
+                console.log("Task: ", task);
+                const row = document.createElement("tr");
+                tableBodyElement.append(row);
+                /*So, here we have a great exaple, what we are doing is we are manually calling
+                whatever the tableBodyElement is in that way we pass and we avoid creating a variable
+                like const tableBody = document.getElementbyID("tasTableBody"). In this case the table body element already has
+                all the past features.
+                */
+                // Create the Name column
+                const nameCol = document.createElement("td");
+                nameCol.append(task.name);
+                row.append(nameCol);
+                // Create the Done column
+                const doneCol = document.createElement("td");
+                const checkbox = document.createElement("input");
+                checkbox.setAttribute("type", "checkbox");
+                if (task.done) {
+                    checkbox.setAttribute("checked", "");
+                }
+                // When the checkbox is clicked then change the backend of task.
+                checkbox.addEventListener('change', async function () {
+                    // Do part of the changes from the actions that the checkbox has to change                    */
+                    const response = await fetch(`/api/moroniIbarra/tasks/${task.id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            name: task.name,
+                            done: this.checked
+                        })
+                    });
+                    if (!response.ok) {
+                        alert('Error updating task');
+                        // Move it back to its previous state
+                        this.checked = !this.checked
+                    }
+                });
+                doneCol.append(checkbox);
+                row.append(doneCol);
+                const actionCol = document.createElement("td");
+                const removeButton = document.createElement("button");
+                removeButton.append("Remove");
+                actionCol.append(removeButton);
+                // When we press the remove button, we will ask for a confirmation
+                // and if the user chooses to proceed, we will remove the task
+                removeButton.addEventListener("click", async function () {
+                    const confirmed = window.confirm(`Are you sure you want to delete:\n${task.name}`);
+                    if (!confirmed) {
+                        // The user does not wish to proceed
+                        return;
+                    }
+
+                    // Go ahead and delete it.
+                    console.log("Delete task id: ", task.id);
+                    const response = await fetch(`/api/moroniIbarra/tasks/${task.id}`, {
+                        method: 'DELETE'
+                    })
+                    if (!response.ok) {
+                        alert('Error deleting task');
+                        return;
+                    }
+
+                    //Delete the row
+                    row.remove();
+                });
+                row.append(actionCol);
+            }
+
+            async function fetchtasks() {
+                const response = await fetch("/api/moroniIbarra/tasks");
+                const tasks = await response.json();
+                console.log("Number of tasks found: ", tasks.length);
+                return tasks;
+            }
+
+            async function renderTable() {
+                const tasks = await fetchtasks();
+                const tableBody = document.getElementById("taskTableBody");
+                for (const element of tasks) {
+                    const task = element;
+                    //render the row
+                    renderRow(tableBody, task);
+                }
+            }
+            // Call the render table function
+            renderTable();
+            // endregion
+
+            //Clear all tasks
+            async function clearAllTasks() {
+                const confirmed = window.confirm("Are you sure you want to delete all tasks?");
+                if (!confirmed) {
+                    return;
+                }
+
+                await fetch("/api/moroniIbarra/tasks", {
+                    method: "DELETE"
+                });
+                const tableBody = document.getElementById("taskTableBody");
+                tableBody.innerHTML = "";
+            }
+
+            //Post a task
+            async function createTask(event) {
+                // This will prevent the form from submitting to another page.
+                event.preventDefault();
+                const nameInput = document.getElementById("nameInput");
+                const name = nameInput.value;
+                const response = await fetch("/api/moroniIbarra/tasks", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        name: name
+                    })
+                });
+                if (!response.ok) {
+                    alert('Error creating task');
+                    return;
+                }
+
+                // Get the recently created task and add to the table.
+                const task = await response.json();
+                const tableBody = document.getElementById("taskTableBody");
+                renderRow(tableBody, task);
+                nameInput.value = "";
+            }
+
+            //Update a task
+            async function updateTask(task) {
+                try {
+                    const response = await fetch(`/api/moroniIbarra/tasks${task.id}`, {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify(task)
+                    });
+
+                    if (response.ok) {
+                        const updatedTask = await response.json();
+                        console.log(updatedTask);
+                        const row = document.getElementById(`row-${updatedTask.id}`);
+                        if (row) {
+                            if (updatedTask.done) {
+                                row.classList.add("bg-gray-200", "line-through");
+                            } else {
+                                row.classList.remove("bg-gray-200", "line-through");
+                            }
+                        }
+                    } else {
+                        console.error("Error updating task:", response.statusText);
+                    }
+                } catch (error) {
+                    console.error("Error updating task:", error);
+                }
+            }
+            //end updating task
+        </script>
+
+    </body>
+    <!--The sky is the limit-->
+
+</html>

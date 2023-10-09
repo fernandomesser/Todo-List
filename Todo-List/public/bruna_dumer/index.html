@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <title>To Do List</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+  </head>
+
+  <body class="bg-orange-300 flex justify-center items-center h-screen">
+    <div class="bg-white rounded-lg shadow-lg p-10">
+      <a class="text-gray-400" href="/">Back</a>
+      <h1 class="text-teal-700 text-5xl text-center uppercase font-bold m-5">To Do App</h1>
+      <div>
+        <form class="flex justify-center" id="taskForm">
+          <input class="bg-teal-100 px-3 py-2 rounded-s-full " id="nameInput" type="text" name="nameInput"
+            placeholder="Enter your task">
+          <button class="bg-teal-500 px-5 rounded-e-full" type="submit">+</button>
+          <button class="bg-red-600 text-white text-xs m-2 p-2 rounded hover:bg-red-500 hidden md:block"
+            id="clearButton" type="button">Clear All Tasks</button>
+        </form>
+      </div>
+
+      <table class="mt-4 mx-auto text-center" id="taskTable">
+        <tbody id="taskTableBody">
+          <tr class="text-gray-400">
+            <th class="px-4">#</th>
+            <th class="px-4">Name</th>
+            <th class="px-4">Done</th>
+            <th class="px-4">Remove</th>
+          </tr>
+        </tbody>
+      </table>
+      <div class="flex flex-col items-center justify-center">
+        <button class="bg-red-600 text-white text-xl m-5 p-2 rounded-full hover:bg-red-500 md:hidden"
+          id="clearButtonMobile" type="button">Clear All Tasks</button>
+      </div>
+      <script>
+        console.log("Hello World!");
+        async function fetchAllTasks() {
+          const response = await fetch("/api/bruna_dumer/tasks");
+          const data = await response.json();
+          return data;
+        }
+
+        function renderRow(tableBodyElement, task) {
+          const row = document.createElement("tr");
+          row.classList.add("text-center", "p-10"); // Add py-4 class for vertical padding
+          tableBodyElement.append(row);
+
+          //Create the ID column
+          const idCol = document.createElement("td");
+          idCol.append(task.id);
+          row.append(idCol);
+
+          //Create the name column
+          const nameCol = document.createElement("td");
+          const nameText = document.createElement("span");
+          nameText.textContent = task.name;
+          nameCol.appendChild(nameText);
+          row.appendChild(nameCol);
+
+          //Create the done column
+          const doneCol = document.createElement("td");
+          const checkbox = document.createElement("input");
+          checkbox.setAttribute("type", "checkbox");
+
+          if (task.done) {
+            checkbox.setAttribute("checked", "");
+          }
+
+          doneCol.append(checkbox);
+          row.append(doneCol);
+
+          // Add event listener to make the task name editable
+          nameCol.addEventListener("click", function () {
+            const input = document.createElement("input");
+            input.type = "text";
+            input.value = task.name;
+            input.classList.add("border", "rounded", "p-1");
+
+            input.addEventListener("keyup", function (event) {
+              if (event.key === "Enter") {
+                const updatedName = input.value.trim();
+                if (updatedName !== "") {
+                  task.name = updatedName;
+                  nameText.textContent = updatedName;
+                  // Perform an update request to the server
+                  updateTask(task);
+                } else {
+                  // Revert to the original name if it's empty
+                  input.value = task.name;
+                }
+                input.replaceWith(nameText); // Replace the input with the span element
+
+              }
+            });
+
+            nameCol.replaceWith(input); // Replace the span with the input field
+            input.focus(); // Set focus to the input field
+
+          });
+
+          //Create actions
+          const actionsCol = document.createElement("td");
+          actionsCol.classList.add("p-2", "text-center"); // Add p-2 class for padding, and text-center class for center alignment
+          const removeButton = document.createElement("button");
+          const trashIcon = document.createElement("i");
+          trashIcon.classList.add("fas", "fa-trash-alt", "text-gray-500", "hover:text-black");
+          removeButton.append(trashIcon);
+          actionsCol.append(removeButton);
+
+          removeButton.addEventListener("click", async function () {
+            const confirm = window.confirm(`Are you sure you want to delete this task:\n${task.name}?`);
+
+            //Choice is null if the user clicks cancel
+            if (!confirm) {
+              return;
+            }
+            //Choice is true if the user clicks ok
+            await fetch(`/api/bruna_dumer/tasks/${task.id}`, {
+              method: "DELETE"
+            });
+            row.remove();
+          });
+
+          row.append(actionsCol);
+        }
+
+        renderTable();
+
+        async function renderTable() {
+          const tasks = await fetchAllTasks();
+          const tableBody = document.getElementById("taskTableBody");
+          for (let i = 0; i < tasks.length; i++) {
+            const task = tasks[i];
+
+            //render the row
+            renderRow(tableBody, task);
+          }
+        }
+
+        //Add event listeners
+        const taskForm = document.getElementById("taskForm");
+        taskForm.addEventListener("submit", postTask);
+
+        const clearButton = document.getElementById("clearButton");
+        clearButton.addEventListener("click", clearAllTasks);
+
+        const clearButtonMobile = document.getElementById("clearButtonMobile");
+        clearButtonMobile.addEventListener("click", clearAllTasks);
+
+
+        //Clear all tasks
+        async function clearAllTasks() {
+          const confirmed = window.confirm("Are you sure you want to delete all tasks?");
+          if (!confirmed) {
+            return;
+          }
+          await fetch("/api/bruna_dumer/tasks", {
+            method: "DELETE"
+          });
+          const tableBody = document.getElementById("taskTableBody");
+          tableBody.innerHTML = "";
+
+          const clearButton = document.getElementById("clearButton");
+          clearButton.style.display = "none"; // Hide the main delete button
+
+          const clearButtonMobile = document.getElementById("clearButtonMobile");
+          clearButtonMobile.style.display = "none"; // Hide the mobile delete button
+        }
+
+
+        //Post a task
+        async function postTask(event) {
+          event.preventDefault();
+          const nameInput = document.getElementById("nameInput");
+          const name = nameInput.value;
+
+          const response = await fetch("/api/bruna_dumer/tasks", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              name: name
+            })
+          });
+
+          const task = await response.json();
+          renderRow(taskTableBody, task);
+          nameInput.value = "";
+        }
+
+        // Update a task
+        async function updateTask(task, row) {
+          try {
+            const response = await fetch(`/api/bruna_dumer/tasks/${task.id}`, {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify(task)
+            });
+
+            if (!response.ok) {
+              throw new Error("Error updating task");
+            }
+          } catch (error) {
+            console.log(error);
+            row.classList.add("bg-red-500");
+            row.addEventListener("animationend", function () {
+              row.classList.remove("bg-red-500");
+            });
+          }
+        }
+      </script>
+
+    </div>
+
+  </body>
+
+</html>

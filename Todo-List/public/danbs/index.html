@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>To Do List</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class=" bg-gradient-to-b from-blue-50 to-blue-200 flex justify-center items-center h-screen">
+
+<div>
+    <div class="flex items-center justify-between mb-4">
+        <h1>
+            <a class="text-gray-400" href="/">Back</a>
+            <span class="text-gray-400 font-light mx-2">\</span>
+            <span id="pageName" onload="displayURI();"></span>
+        </h1>
+
+        <a href="/danbs/wireframe" type="button"
+           class="inline-flex items-center gap-x-1.5 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+            Check Wireframe Test
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                 stroke="currentColor" class="w-6 h-6">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12h15m0 0l-6.75-6.75M19.5 12l-6.75 6.75"/>
+            </svg>
+        </a>
+    </div>
+    <div class="bg-white rounded-lg shadow-lg pt-5 pb-10 px-10">
+        <div class="px-4 sm:px-6 lg:px-8 mt-4">
+            <h1 class="text-base font-semibold leading-6 text-gray-900 mb-4 text-center">To Do App</h1>
+            <div class="sm:flex sm:items-center">
+                <div class="sm:flex-auto">
+
+                    <form class="flex justify-center" id="taskForm">
+                        <div>
+                            <label for="nameInput" class="block text-sm font-medium leading-6 text-gray-900 mt-2">Enter
+                                a new
+                                task</label>
+                            <div class="mt-2 flex rounded-md shadow-sm">
+                                <div class="relative flex flex-grow items-stretch focus-within:z-10">
+                                    <input onkeydown="newTaskValidation(this)" type="text" name="nameInput"
+                                           id="nameInput"
+                                           class="block w-full rounded-none rounded-l-md border-0 py-1.5 pl-2 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                                           placeholder="e.g. Do Homework">
+                                </div>
+                                <button id="addButton" type="button"
+                                        class="relative -ml-px inline-flex items-center gap-x-1.5 rounded-r-md px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                                        disabled>
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                         stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                              d="M12 4.5v15m7.5-7.5h-15"/>
+                                    </svg>
+                                    Add
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="mt-10 sm:ml-16  sm:flex-none ">
+                    <button id="clearButton" type="button"
+                            class="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+                        Clear
+                    </button>
+                </div>
+            </div>
+            <div class="mt-8 flow-root">
+                <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+                    <!--                <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">-->
+                    <!--                    <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">-->
+                    <table class="min-w-full divide-y divide-gray-300" id="taskTable">
+                        <thead>
+                        <tr>
+                            <th scope="col" colspan="3"
+                                class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Check on a task after
+                                completion
+                            </th>
+                        </tr>
+                        </thead>
+                        <tbody class=" bg-white" id="taskTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function fetchAllTasks() {
+        const response = await fetch("/api/danbs/tasks");
+        const data = await response.json();
+        return data;
+    }
+
+    window.onload = function displayURI() {
+        let uri = window.location.pathname.split('/');
+        // console.log(uri[1], this);
+        document.getElementById('pageName').prepend(uri[1]);
+    }
+
+    function newTaskValidation(input) {
+        // console.log(input);
+        document.getElementById('addButton').disabled = !input.value;
+    }
+
+    function renderRow(tableBodyElement, task) {
+        const row = document.createElement("tr");
+        row.classList.add("even:bg-gray-50")
+        tableBodyElement.append(row);
+
+        // //Create the ID column
+        // const idCol = document.createElement("td");
+        // idCol.className = "whitespace-nowrap px-3 py-4 text-sm text-gray-500";
+        // idCol.append(task.id);
+        // row.append(idCol);
+
+        //Create the done column
+        const doneCol = document.createElement("td");
+        doneCol.classList.add("relative", "whitespace-nowrap", "py-4", "pl-3", "pr-4", "text-right", "text-sm", "font-medium", "sm:pr-3", "w-1");
+        const checkbox = document.createElement("input");
+        checkbox.setAttribute("id", "task_" + task.id)
+        checkbox.setAttribute("type", "checkbox");
+
+        if (task.done) {
+            checkbox.setAttribute("checked", "");
+        }
+
+        doneCol.append(checkbox);
+        row.append(doneCol);
+
+        //Create the name column
+        const nameCol = document.createElement("td");
+        const rowLabel = document.createElement("label");
+        rowLabel.setAttribute("for", "task_" + task.id);
+        rowLabel.append(task.name);
+        nameCol.append(rowLabel);
+        row.append(nameCol);
+
+
+        //Create actions
+        const actionsCol = document.createElement("td");
+        const removeButton = document.createElement("div");
+        removeButton.classList.add("inline-flex", "items-center", "rounded-md", "bg-red-100", "px-1.5", "py-0.5", "text-xs", "font-medium", "text-red-700");
+
+        const svgns = 'http://www.w3.org/2000/svg';
+        var svg = document.createElementNS(svgns, 'svg');
+        svg.setAttribute("fill", "none");
+        svg.setAttribute("viewBox", "0 0 24 24");
+        svg.setAttribute("stroke-width", "1.5");
+        svg.setAttribute("stroke", "currentColor");
+        svg.setAttribute("className", "w-6 h-6");
+        removeButton.append(svg);
+        removeButton.classList.add("w-7", "cursor-pointer")
+
+        var path = document.createElementNS(svgns, 'path');
+        path.setAttribute("stroke-linecap", "round");
+        path.setAttribute("stroke-linejoin", "round");
+        path.setAttribute('d', 'M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0'); //Set path's data
+        svg.appendChild(path);
+
+        actionsCol.append(removeButton);
+
+        removeButton.addEventListener("click", async function () {
+            const choice = window.confirm(`Are you sure you want to delete this task:\n${task.name}?`);
+
+            //Choice is null if the user clicks cancel
+            if (!choice) {
+                return;
+            }
+            //Choice is true if the user clicks ok
+            await fetch(`/api/danbs/tasks/${task.id}`, {
+                method: "DELETE"
+            });
+            row.remove();
+        });
+
+        row.append(actionsCol);
+
+    }
+
+    renderTable();
+
+    async function renderTable() {
+        const tasks = await fetchAllTasks();
+        const tableBody = document.getElementById("taskTableBody");
+        for (let i = 0; i < tasks.length; i++) {
+            const task = tasks[i];
+
+            //render the row
+            renderRow(tableBody, task);
+        }
+
+    }
+
+    //Add event listeners
+    const addButton = document.getElementById("addButton");
+    addButton.addEventListener("click", postTask);
+
+    const clearButton = document.getElementById("clearButton");
+    clearButton.addEventListener("click", clearAllTasks);
+
+    //Clear all tasks
+    async function clearAllTasks() {
+        const confirmed = window.confirm("Are you sure you want to delete all tasks?");
+        if (!confirmed) {
+            return;
+        }
+        await fetch("/api/danbs/tasks", {
+            method: "DELETE"
+        });
+        const tableBody = document.getElementById("taskTableBody");
+        tableBody.innerHTML = "";
+    }
+
+    //Post a task
+    async function postTask() {
+        const nameInput = document.getElementById("nameInput");
+        const name = nameInput.value;
+
+        const response = await fetch("/api/danbs/tasks", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                name: name
+            })
+        });
+
+        const task = await response.json();
+        const tableBody = document.getElementById("taskTableBody");
+        renderRow(tableBody, task);
+        nameInput.value = "";
+
+    }
+
+    // Update a task
+    async function updateTask(task) {
+        try {
+            const response = await fetch(`/api/danbs/tasks/${task.id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(task)
+            });
+
+            if (response.ok) {
+                const updatedTask = await response.json();
+                console.log(updatedTask);
+                const row = document.getElementById(`row-${updatedTask.id}`);
+                if (row) {
+                    if (updatedTask.done) {
+                        row.classList.add("bg-gray-200", "line-through");
+                    } else {
+                        row.classList.remove("bg-gray-200", "line-through");
+                    }
+                }
+            } else {
+                console.error("Error updating task:", response.statusText);
+            }
+        } catch (error) {
+            console.error("Error updating task:", error);
+        }
+    }
+
+
+    // Add event listener to the table
+    const taskTable = document.getElementById("taskTable");
+    taskTable.addEventListener("change", async function (event) {
+        const checkbox = event.target;
+        if (checkbox.type === 'checkbox') {
+            const row = checkbox.parentElement.parentElement;
+            const id = row.children[0].innerText;
+            const name = row.children[1].innerText;
+            const task = {
+                id: parseInt(id), // Convert the ID to a number
+                name: name,
+                done: checkbox.checked
+            };
+            await updateTask(task);
+
+            // Apply appropriate CSS classes based on task's "done" status
+            row.classList.toggle("bg-gray-200", checkbox.checked);
+            row.children[1].classList.toggle("line-through", checkbox.checked);
+        }
+    });
+
+</script>
+</body>
+
+</html>

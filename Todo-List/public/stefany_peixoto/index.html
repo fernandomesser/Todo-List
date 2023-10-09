@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <title>Stefany Peixoto - To-Do App</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
+    </head>
+
+    <body class="bg-gradient-to-r from-indigo-400 flex flex-col items-center justify-center h-screen">
+        <a class="text-sm text-pink-200" href="/">Back</a>
+        <h1 class="text-pink-400 flex justify-center uppercase font-semibold text-4xl py-4">To-Do list</h1>
+        <form id="taskForm">
+            <input class="rounded-l-full py-3 align-middle" placeholder="Enter new task" id="nameInput" type="text"
+                name="name" />
+            <button class="shadow-lg text-white bg-pink-400 font-bold py-3 px-6 rounded-r-full align-middle"
+                id="addButton">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5"
+                    stroke="currentColor" class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+
+            </button>
+            <button class="shadow-lg text-white bg-rose-600 font-bold py-3 px-6 rounded-full" id="clearButton"
+                type="button">Clear</button>
+        </form>
+        <div class="flex justify-center items-center bg-white rounded-lg shadow-lg py-5 px-10 mt-4">
+
+            <table class="w-full" border="1" id="taskTable">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th></th>
+                        <th></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="taskTableBody"></tbody>
+            </table>
+            <script>
+                const tableBody = document.getElementById("taskTableBody")
+
+
+                function renderRow(task) {
+                    console.log("Task: ", task);
+                    const row = document.createElement("tr");
+                    tableBody.append(row);
+                    // Create the ID column
+                    // const idCol = document.createElement("td");
+                    // idCol.append(task.id);
+                    // row.append(idCol);
+
+                    // Create the Done column
+                    const doneCol = document.createElement("td");
+
+                    const checkbox = document.createElement("input");
+                    checkbox.setAttribute("type", "checkbox");
+                    if (task.done) {
+                        checkbox.setAttribute("checked", "");
+                    }
+                    checkbox.addEventListener('change', function () {
+                        // When the checkbox changes, update the backend
+                        fetch(`/api/stefany_peixoto/tasks/${task.id}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ done: this.checked })
+                        }).then(function (response) {
+                            if (!response.ok) {
+                                console.error('Error updating task');
+                                // If the request failed, revert the checkbox
+                                this.checked = !this.checked;
+                            }
+                        }.bind(this)).catch(function (error) {
+                            console.error(error);
+                            // If the request failed, revert the checkbox
+                            this.checked = !this.checked;
+                        }.bind(this));
+                    });
+                    doneCol.append(checkbox);
+                    row.append(doneCol);
+
+                    // Create the Name column
+                    const nameCol = document.createElement("td");
+                    nameCol.append(task.name);
+                    nameCol.classList.add("text-m")
+                    if (tableBody.children.length % 2 === 0) {
+                        nameCol.classList.add("bg-indigo-300");
+                    } else {
+                        nameCol.classList.add("bg-white");
+                    }
+                    row.append(nameCol);
+
+                    // Create the actions
+                    const actionCol = document.createElement("td");
+                    const removeButton = document.createElement("button");
+                    // removeButton.textContent = "remove";
+
+                    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+                    svg.setAttribute("fill", "none");
+                    svg.setAttribute("viewBox", "0 0 24 24");
+                    svg.setAttribute("stroke-width", "1.5");
+                    svg.setAttribute("stroke", "currentColor");
+                    svg.setAttribute("class", "w-6 h-6");
+
+                    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                    path.setAttribute("stroke-linecap", "round");
+                    path.setAttribute("stroke-linejoin", "round");
+                    path.setAttribute("d", "M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0");
+
+                    svg.appendChild(path);
+                    removeButton.appendChild(svg);
+
+                    removeButton.addEventListener("click", async function () {
+                        const choice = window.confirm(`Are you sure you want to delete:\n${task.name}`);
+                        if (!choice) {
+                            return;
+                        }
+                        // Go ahead and delete it.
+                        console.log("Delete task id: ", task.id);
+                        await fetch(`/api/stefany_peixoto/tasks/${task.id}`, { method: 'DELETE' })
+                        row.remove();
+                    });
+
+                    actionCol.appendChild(removeButton);
+                    row.appendChild(actionCol);
+                }
+
+                function fetchTasks() {
+                    console.log("Fetching Tasks")
+                    fetch("/api/stefany_peixoto/tasks").then(function (response) {
+                        console.log(response)
+                        response.json().then(function (data) {
+                            console.log(data)
+                            for (let i = 0; i < data.length; i++) {
+                                const task = data[i]
+                                renderRow(task)
+                            }
+                        })
+                    })
+
+
+                }
+                // POST
+                const taskForm = document.getElementById("taskForm");
+                async function createTask(task) {
+                    const response = await fetch("/api/stefany_peixoto/tasks", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(task)
+                    });
+                    if (!response.ok) {
+                        throw new Error('Error creating task');
+                    }
+
+                    const tasks = await response.json();
+                    renderRow(tasks, tableBody);
+                    // reset input name
+                    document.getElementById("nameInput").value = "";
+                }
+
+                function handleFormSubmit(event) {
+                    event.preventDefault();
+                    const nameInput = document.getElementById("nameInput");
+                    const taskName = nameInput.value.trim();
+                    if (taskName === "") {
+                        return;
+                    }
+
+                    createTask({
+                        name: taskName,
+                        done: false
+                    });
+                }
+
+                taskForm.addEventListener("submit", handleFormSubmit);
+
+                fetchTasks()
+            </script>
+    </body>
+
+</html>

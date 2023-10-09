@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <title>Pedro Perillo- To-Do App</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
+    </head>
+
+    <body class="bg-slate-300 flex justify-center items-center h-screen">
+        <div class="bg-slate-100 py-10 px-10 border shadow-2xl rounded-md border-gray-300 m-6" x-data="todoApp()"
+            @keydown.escape.window="cancelTaskUpdate" class="p-6 max-w-xl mx-auto">
+            <a class="text-slate-800" href="/">Back</a>
+            <h1 class="text-slate-700 text-4xl text-center font-bold m-5">AMAZING To-Do App</h1>
+            <form class="flex justify-center" id="taskForm" @submit.prevent="createTask">
+
+                <input class="bg-slate-50  border-none shadow-xl rounded-s-full" id="nameInput" x-model="taskName"
+                    type="text" name="taskName" placeholder="Enter task" />
+                <button
+                    class="bg-orange-400 shadow-xl text-slate-700 px-5 border-solid border-1 border-slate-800 rounded-e-full hover:bg-orange-300"
+                    id="addButton">Add</button>
+                <button class="bg-slate-700 text-white  m-1 p-2 rounded hover:bg-slate-400" id="clearButton"
+                    x-show="hasDone" id="clearButton" type="button" @click="clearDoneTasks">clear
+                    done</button>
+            </form>
+            <div class="space-y-2" x-show="!tasks.length">
+                <h1>Empty state</h1>
+            </div>
+            <ul class="space-y-2" x-show="tasks.length">
+                <template x-for="task in tasks" :key="task.id">
+                    <li>
+                        <div
+                            class="py-4 px-4 rounded-md shadow-md border border-gray-300 group flex flex-row items-center justify-between space-x-2">
+                            <input class="rounded" type="checkbox" @change="toggleTaskDone(task)"
+                                :checked="task.done" />
+                            <div class="flex-grow cursor-pointer">
+                                <span x-show="!selectedTask || task.id !== selectedTask.id"
+                                    @dblclick="selectTask($nextTick, task)" class="text-slate-700 px-2"
+                                    :class="task.done ? 'line-through' : ''" x-text="task.name">
+                                    Name of the task
+                                </span>
+                                <div x-ref="a" x-show="selectedTask && task.id === selectedTask.id">
+                                    <input :id="task.id" @keydown.enter="saveSelectedTask" @blur="saveSelectedTask"
+                                        type="text" x-model="selectedTaskName" />
+                                </div>
+                            </div>
+                            <button class="hidden group-hover:block" @click="deleteTask(task)">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                    stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                </svg>
+                            </button>
+                        </div>
+                    </li>
+                </template>
+            </ul>
+        </div>
+
+        <script>
+            window.todoApp = function () {
+                return {
+                    // This is called when the component is built
+                    async init() {
+                        const response = await fetch("/api/pedroPerillo/tasks");
+                        this.tasks = await response.json();
+                        this.hasDone = this.tasks.filter(t => t.done).length > 0;
+                    },
+                    // Data
+                    tasks: [],
+                    taskName: null,
+                    selectedTask: null,
+                    selectedTaskName: null,
+                    hasDone: false,
+                    // Computed
+                    // Some of my actions (behavior)
+                    selectTask($nextTick, task) {
+                        this.selectedTask = task;
+                        this.selectedTaskName = task.name;
+                        $nextTick(() => {
+                            document.getElementById(task.id).select();
+                        });
+                    },
+                    cancelTaskUpdate() {
+                        if (!this.selectedTask) {
+                            // ignore event
+                            return;
+                        }
+                        this.selectedTask = null;
+                        this.selectedTaskName = null;
+                    },
+                    async toggleTaskDone(task) {
+                        task.done = !task.done;
+                        await this.updateTask(task);
+                    },
+                    async saveSelectedTask() {
+                        if (!this.selectedTask) {
+                            return;
+                        }
+                        this.selectedTask.name = this.selectedTaskName;
+                        await this.updateTask(this.selectedTask);
+                        this.cancelTaskUpdate();
+                    },
+                    async clearDoneTasks() {
+                        if (!confirm('Are you sure?')) {
+                            return;
+                        }
+
+                        const tasksToDelete = this.tasks.filter(t => t.done);
+                        for (const task of tasksToDelete) {
+                            await this.deleteTask(task, true);
+                        }
+                    },
+                    // -- Api Calls
+                    async createTask() {
+                        const response = await fetch("/api/pedroPerillo/tasks", {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                name: this.taskName
+                            })
+                        });
+                        const task = await response.json();
+                        this.tasks.push(task);
+                        this.taskName = null;
+                    },
+                    async deleteTask(task, confirmed = false) {
+                        if (!confirmed) {
+                            if (!confirm('Are you sure?')) {
+                                return;
+                            }
+                        }
+
+                        const response = await fetch(`/api/pedroPerillo/tasks/${task.id}`, {
+                            method: 'DELETE'
+                        });
+                        const index = this.tasks.findIndex(t => t.id === task.id);
+                        if (index === -1) {
+                            return;
+                        }
+                        this.tasks.splice(index, 1);
+                        this.hasDone = this.tasks.filter(t => t.done).length > 0;
+                    },
+                    async updateTask(task) {
+                        const response = await fetch(`/api/pedroPerillo/tasks/${task.id}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(task),
+                        });
+                        this.hasDone = this.tasks.filter(t => t.done).length > 0;
+                    },
+                };
+            }
+        </script>
+        <script src="//unpkg.com/alpinejs"></script>
+    </body>
+
+</html>
